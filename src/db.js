@@ -67,6 +67,15 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS posts_due ON posts (status, scheduled_at);
   CREATE INDEX IF NOT EXISTS posts_user ON posts (user_id, scheduled_at);
+
+  CREATE TABLE IF NOT EXISTS einstellungen (
+    schluessel TEXT PRIMARY KEY,
+    wert TEXT
+  );
 `);
+
+db.einstellung = (k) => (db.prepare('SELECT wert FROM einstellungen WHERE schluessel = ?').get(k) || {}).wert;
+db.einstellungSetzen = (k, v) => db.prepare(`INSERT INTO einstellungen (schluessel, wert) VALUES (?, ?)
+  ON CONFLICT (schluessel) DO UPDATE SET wert = excluded.wert`).run(k, v);
 
 module.exports = db;

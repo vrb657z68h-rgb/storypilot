@@ -38,3 +38,11 @@ if (artWahl) {
   artWahl.addEventListener('change', umschalten);
   umschalten();
 }
+
+// Adressen zum Kopieren antippen
+for (const f of document.querySelectorAll('input.kopieren')) {
+  f.addEventListener('click', () => {
+    f.select();
+    if (navigator.clipboard) navigator.clipboard.writeText(f.value).then(() => { f.classList.add('kopiert'); setTimeout(() => f.classList.remove('kopiert'), 1200); });
+  });
+}

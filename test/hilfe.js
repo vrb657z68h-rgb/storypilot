@@ -19,9 +19,9 @@ function client(app) {
 }
 const csrfAus = (html) => (html.match(/name="_csrf" value="([^"]+)"/) || [])[1];
 
-async function registrieren(c, email) {
+async function registrieren(c, email, extra = {}) {
   const r = await c.holen('/registrieren');
-  return c.holen('/registrieren', { method: 'POST', body: new URLSearchParams({ _csrf: csrfAus(r.text), email, passwort: 'geheim123', agb: '1' }) });
+  return c.holen('/registrieren', { method: 'POST', body: new URLSearchParams({ _csrf: csrfAus(r.text), email, passwort: 'geheim123', agb: '1', ...extra }) });
 }
 
 async function demoKonto(c) {

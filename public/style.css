@@ -108,3 +108,6 @@ label.haken input { width: auto; margin-top: .3rem; }
 .preiskarte.hell { border-color: var(--linie); }
 .planname { font-weight: 700; color: var(--grau); text-transform: uppercase; letter-spacing: .05em; font-size: .85rem; }
 [hidden] { display: none !important; }
+input.kopieren { font-family: ui-monospace, monospace; font-size: .85rem; background: var(--grund); cursor: copy; }
+input.kopiert { outline: 2px solid var(--gruen); }
+.text-seite ol li { margin-bottom: .8rem; }

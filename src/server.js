@@ -98,6 +98,7 @@ app.post('/registrieren', (req, res) => {
   if (!gastCsrfOk(req)) return fehler('Bitte lade die Seite neu und versuche es noch einmal.');
   if (registrierungZu()) return res.redirect('/anmelden');
   if (auth.zuVieleVersuche(req.ip)) return fehler('Zu viele Versuche. Bitte warte 15 Minuten.');
+  if (config.nurIch && config.ersterCode && String(req.body.code || '').trim() !== config.ersterCode) return fehler('Der Einrichtungs-Code stimmt nicht.');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) return fehler('Bitte gib eine gültige E-Mail-Adresse ein.');
   if (pw.length < 8 || pw.length > 200) return fehler('Das Passwort muss mindestens 8 Zeichen haben.');
   if (req.body.agb !== '1') return fehler('Bitte akzeptiere die AGB.');
@@ -273,7 +274,7 @@ app.post('/app/beitrag/:id/loeschen', csrfPflicht, (req, res) => {
 });
 
 // ---------- Instagram-Konten ----------
-app.get('/app/konten', (req, res) => senden(res, views.konten(req, kontenVon(req.user.id))));
+app.get('/app/konten', (req, res) => senden(res, views.konten(req, kontenVon(req.user.id), darfEinrichten(req))));
 
 app.post('/app/konten/demo', csrfPflicht, (req, res) => {
   if (!config.demoInstagram) return res.redirect('/app/konten');
@@ -345,6 +346,27 @@ app.post('/instagram/datenloeschung', (req, res) => {
 app.get('/datenloeschung', (req, res) => senden(res, views.text(req, 'Datenlöschung',
   `<h1>Datenlöschung</h1><p>Deine Instagram-Verbindung und alle zugehörigen Daten wurden gelöscht.</p><p class="klein">Bestätigungscode: ${views.e(req.query.code || '')}</p>`)));
 
+// ---------- Einrichtung (nur im privaten Modus, für den Besitzer) ----------
+const darfEinrichten = (req) => config.nurIch && !config.igAusEnv
+  && req.user.id === db.prepare('SELECT MIN(id) AS id FROM users').get().id;
+
+app.get('/app/einrichtung', (req, res) => {
+  if (!darfEinrichten(req)) return res.redirect('/app/konten');
+  senden(res, views.einrichtung(req));
+});
+app.post('/app/einrichtung', csrfPflicht, (req, res) => {
+  if (!darfEinrichten(req)) return res.redirect('/app/konten');
+  const id = String(req.body.app_id || '').trim();
+  const geheim = String(req.body.app_secret || '').trim();
+  if (!/^\d{5,30}$/.test(id)) return senden(res, views.einrichtung(req, 'Die App-ID besteht nur aus Ziffern.'), 400);
+  if (geheim && !/^[a-f0-9]{20,64}$/i.test(geheim)) return senden(res, views.einrichtung(req, 'Der App-Geheimcode sieht nicht richtig aus (Ziffern und Buchstaben a bis f).'), 400);
+  db.einstellungSetzen('ig_app_id', id);
+  if (geheim) db.einstellungSetzen('ig_app_secret', geheim);
+  // Demo-Konten entfernen, sobald echtes Posten möglich ist
+  if (!config.demoInstagram) for (const k of db.prepare('SELECT id FROM accounts WHERE demo = 1').all()) kontoEntfernen(k.id);
+  zurueck(res, '/app/konten', 'Gespeichert. Jetzt kannst du dein Instagram-Konto verbinden.');
+});
+
 // ---------- Abo ----------
 app.get('/app/abo', (req, res) => senden(res, views.abo(req, { premium: plan.istPremium(req.user), imMonat: plan.beitraegeImMonat(req.user.id, Date.now()) })));
 
@@ -385,7 +407,6 @@ app.use((err, req, res, next) => {
 });
 
 if (require.main === module) {
-  if (config.sessionSecret === 'bitte-in-.env-aendern') console.warn('WARNUNG: SESSION_SECRET in .env setzen!');
   app.listen(config.port, () => {
     console.log(`${config.appName} läuft auf ${config.baseUrl}`);
     if (config.demoInstagram) console.log('Demo-Modus: Instagram-Zugangsdaten fehlen, Posten wird nur simuliert.');

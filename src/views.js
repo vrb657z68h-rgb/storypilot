@@ -87,7 +87,9 @@ ${unten}</div>`, { schmal: true });
 }
 
 function registrieren(req, fehler, email = '') {
-  return formularSeite(req, 'Konto erstellen', `
+  const code = config.nurIch && config.ersterCode
+    ? `<label>Einrichtungs-Code<input name="code" required autocomplete="off" value="${e((req.body && req.body.code) || (req.query && req.query.code) || '')}"></label>` : '';
+  return formularSeite(req, 'Konto erstellen', `${code}
 <label>E-Mail<input type="email" name="email" required value="${e(email)}" autocomplete="email"></label>
 <label>Passwort (mind. 8 Zeichen)<input type="password" name="passwort" required minlength="8" autocomplete="new-password"></label>
 ${config.nurIch ? '<input type="hidden" name="agb" value="1">' : `<label class="haken"><input type="checkbox" name="agb" value="1" required> Ich akzeptiere die <a href="/agb" target="_blank">AGB</a> und habe die <a href="/datenschutz" target="_blank">Datenschutzerklärung</a> gelesen.</label>`}`,
@@ -203,13 +205,17 @@ ${neu ? `<label>Video (MP4/MOV, max. ${config.maxVideoMB} MB) oder Bild (JPG, ma
 `, { schmal: true });
 }
 
-function konten(req, liste) {
+function konten(req, liste, einrichten = false) {
   const zeilen = liste.map((k) => `<div class="konto">
   <div><b>@${e(k.username)}</b>${k.demo ? ' <span class="marke gelb">Demo</span>' : ''}
   ${!k.demo && k.token_expires ? `<div class="klein">Zugang gültig bis ${e(zeit.datumText(k.token_expires))} (wird automatisch verlängert)</div>` : ''}</div>
   <form method="post" action="/app/konten/${k.id}/trennen" data-bestaetigen="Konto trennen? Geplante Beiträge für dieses Konto werden gelöscht.">${csrf(req)}<button class="link rot">Trennen</button></form>
 </div>`).join('');
-  const verbinden = config.demoInstagram
+  const verbinden = config.demoInstagram && einrichten
+    ? `<a class="knopf" href="/app/einrichtung">Instagram einrichten</a>
+       <p class="klein">Einmalig nötig: Trag die Zugangsdaten deiner Meta-App ein. Bis dahin kannst du alles mit einem Demo-Konto ausprobieren.</p>
+       <form method="post" action="/app/konten/demo">${csrf(req)}<button class="link">Demo-Konto zum Ausprobieren verbinden</button></form>`
+    : config.demoInstagram
     ? `<form method="post" action="/app/konten/demo">${csrf(req)}<button class="knopf">Demo-Konto verbinden</button></form>
        <p class="klein">Im Demo-Modus wird das Posten nur simuliert. Für echtes Posten müssen INSTAGRAM_APP_ID und INSTAGRAM_APP_SECRET eingetragen sein.</p>`
     : `<a class="knopf" href="/instagram/verbinden">Instagram-Konto verbinden</a>`;
@@ -250,6 +256,32 @@ function profil(req) {
 </div>`, { schmal: true });
 }
 
+function einrichtung(req, fehler) {
+  const basis = config.baseUrl;
+  const zeile = (titel, wert) => `<label>${titel}<input readonly value="${e(wert)}" class="kopieren"></label>`;
+  return seite(req, 'Instagram einrichten', `
+<div class="karte text-seite"><h1>Instagram einrichten</h1>
+${fehler ? `<div class="fehler">${e(fehler)}</div>` : ''}
+<p>Das machst du nur einmal, am besten am Computer.</p>
+<ol>
+<li>Öffne <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener">developers.facebook.com/apps</a> und lege eine neue App an (Anwendungsfall „Andere“, Typ „Business“). Wenn du schon eine App für die Reels-Automatik hast, kannst du auch die nehmen.</li>
+<li>Füge das Produkt <b>Instagram</b> hinzu und wähle <b>„API-Einrichtung mit Instagram-Login“</b>.</li>
+<li>Unter „Instagram-Business-Login einrichten“ trägst du diese Adressen ein (zum Kopieren antippen):
+${zeile('Weiterleitungs-URL (OAuth)', `${basis}/instagram/callback`)}
+${zeile('Deautorisierungs-Rückruf', `${basis}/instagram/deauthorize`)}
+${zeile('Rückruf für Datenlöschung', `${basis}/instagram/datenloeschung`)}</li>
+<li>Unter „App-Rollen → Rollen“ trägst du dein Instagram-Konto als <b>Instagram-Tester</b> ein. Die Einladung bestätigst du in der Instagram-App unter Einstellungen → Website-Berechtigungen → App-Einladungen.</li>
+<li>Kopiere die <b>Instagram-App-ID</b> und den <b>Instagram-App-Geheimcode</b> (stehen oben auf der Instagram-Seite der App) hierher:</li>
+</ol>
+<form method="post">${csrf(req)}
+<label>Instagram-App-ID<input name="app_id" inputmode="numeric" required value="${e(config.igAppId)}"></label>
+<label>Instagram-App-Geheimcode${config.igAppSecret ? ' (gespeichert, nur zum Ändern ausfüllen)' : ''}<input name="app_secret" type="password" ${config.igAppSecret ? '' : 'required'} autocomplete="off"></label>
+<button class="knopf breit">Speichern</button>
+</form>
+<p class="klein">Solange die Meta-App im Entwicklungsmodus ist, kann sie nur auf Konten posten, die als Tester eingetragen sind. Für dich allein reicht das, eine Prüfung durch Meta ist nicht nötig.</p>
+</div>`, { schmal: true });
+}
+
 function text(req, titel, html) {
   return seite(req, titel, `<div class="karte text-seite">${html}</div>`, { schmal: true });
 }
@@ -259,5 +291,5 @@ function fehlerSeite(req, titel, nachricht) {
 }
 
 module.exports = {
-  e, startseite, registrieren, anmelden, kalender, beitragFormular, konten, abo, profil, text, fehlerSeite,
+  e, startseite, registrieren, anmelden, kalender, beitragFormular, konten, einrichtung, abo, profil, text, fehlerSeite,
 };

@@ -1,0 +1,9 @@
+#cloud-config
+# Bei Hetzner beim Erstellen des Servers unter "Cloud config" einfügen.
+# ERSTER_CODE: dein Code fürs erste Anmelden (frei wählbar).
+package_update: true
+packages: [git, curl, openssl]
+runcmd:
+  - curl -fsSL https://get.docker.com | sh
+  - git clone https://github.com/vrb657z68h-rgb/Storypilot.git /opt/storypilot
+  - ERSTER_CODE=HIER-DEIN-CODE bash /opt/storypilot/deploy/einrichten.sh

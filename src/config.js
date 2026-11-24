@@ -33,6 +33,8 @@ const config = {
   priceLabel: e.PRICE_LABEL || '9,99 €',
   freePosts: Number(e.FREE_POSTS || 10),      // Gratis: Beiträge pro Monat
   freeAccounts: Number(e.FREE_ACCOUNTS || 1), // Gratis: Instagram-Konten
+  // 'nur-ich' = nur das erste Konto darf sich registrieren (private Nutzung)
+  nurIch: (e.MODUS || '') === 'nur-ich',
   timeZone: 'Europe/Berlin',
   maxVideoMB: 300,
   maxImageMB: 8,

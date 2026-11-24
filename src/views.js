@@ -19,7 +19,7 @@ function seite(req, titel, inhalt, { schmal = false } = {}) {
   const nav = u
     ? `<a href="/app">Kalender</a><a href="/app/neu" class="knopf klein">+ Neuer Beitrag</a>
        <a href="/app/konten">Konten</a><a href="/app/abo">Abo</a><a href="/app/konto">Profil</a>`
-    : `<a href="/#preis">Preis</a><a href="/anmelden">Anmelden</a><a href="/registrieren" class="knopf klein">Kostenlos starten</a>`;
+    : config.nurIch ? '' : `<a href="/#preis">Preis</a><a href="/anmelden">Anmelden</a><a href="/registrieren" class="knopf klein">Kostenlos starten</a>`;
   const hinweis = req.query && req.query.hinweis ? `<div class="hinweis">${e(req.query.hinweis)}</div>` : '';
   const demo = config.demoInstagram && u
     ? '<div class="demo-leiste">Demo-Modus: Es wird nichts wirklich auf Instagram gepostet.</div>' : '';
@@ -30,6 +30,11 @@ function seite(req, titel, inhalt, { schmal = false } = {}) {
 <link rel="stylesheet" href="/static/style.css">
 <script src="/static/app.js" defer></script>
 <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/icon-180.png">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="${e(config.appName)}">
+<meta name="theme-color" content="#2b4eff">
 </head><body>
 ${demo}
 <header class="kopf"><a href="${u ? '/app' : '/'}" class="logo"><img src="/static/icon.svg" alt="">${e(config.appName)}</a>
@@ -85,15 +90,15 @@ function registrieren(req, fehler, email = '') {
   return formularSeite(req, 'Konto erstellen', `
 <label>E-Mail<input type="email" name="email" required value="${e(email)}" autocomplete="email"></label>
 <label>Passwort (mind. 8 Zeichen)<input type="password" name="passwort" required minlength="8" autocomplete="new-password"></label>
-<label class="haken"><input type="checkbox" name="agb" value="1" required> Ich akzeptiere die <a href="/agb" target="_blank">AGB</a> und habe die <a href="/datenschutz" target="_blank">Datenschutzerklärung</a> gelesen.</label>`,
-  'Konto erstellen', fehler, '<p class="klein">Schon dabei? <a href="/anmelden">Anmelden</a></p>');
+${config.nurIch ? '<input type="hidden" name="agb" value="1">' : `<label class="haken"><input type="checkbox" name="agb" value="1" required> Ich akzeptiere die <a href="/agb" target="_blank">AGB</a> und habe die <a href="/datenschutz" target="_blank">Datenschutzerklärung</a> gelesen.</label>`}`,
+  'Konto erstellen', fehler, config.nurIch ? '<p class="klein">Privater Modus: Nur dieses eine Konto kann angelegt werden.</p>' : '<p class="klein">Schon dabei? <a href="/anmelden">Anmelden</a></p>');
 }
 
 function anmelden(req, fehler, email = '') {
   return formularSeite(req, 'Anmelden', `
 <label>E-Mail<input type="email" name="email" required value="${e(email)}" autocomplete="email"></label>
 <label>Passwort<input type="password" name="passwort" required autocomplete="current-password"></label>`,
-  'Anmelden', fehler, '<p class="klein">Neu hier? <a href="/registrieren">Konto erstellen</a></p>');
+  'Anmelden', fehler, config.nurIch ? '' : '<p class="klein">Neu hier? <a href="/registrieren">Konto erstellen</a></p>');
 }
 
 function statusMarke(b) {

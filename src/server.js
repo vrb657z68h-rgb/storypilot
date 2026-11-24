@@ -58,7 +58,13 @@ function csrfPflicht(req, res, next) {
 }
 
 // ---------- Öffentliche Seiten ----------
-app.get('/', (req, res) => (req.user ? res.redirect('/app') : senden(res, views.startseite(req))));
+const registrierungZu = () => config.nurIch && Boolean(db.prepare('SELECT 1 FROM users LIMIT 1').get());
+
+app.get('/', (req, res) => {
+  if (req.user) return res.redirect('/app');
+  if (config.nurIch) return res.redirect(registrierungZu() ? '/anmelden' : '/registrieren');
+  senden(res, views.startseite(req));
+});
 app.get('/impressum', (req, res) => senden(res, views.text(req, 'Impressum', legal.impressum())));
 app.get('/datenschutz', (req, res) => senden(res, views.text(req, 'Datenschutz', legal.datenschutz())));
 app.get('/agb', (req, res) => senden(res, views.text(req, 'AGB', legal.agb())));
@@ -80,6 +86,7 @@ function gastCsrfOk(req) {
 
 app.get('/registrieren', (req, res) => {
   if (req.user) return res.redirect('/app');
+  if (registrierungZu()) return res.redirect('/anmelden');
   gastCsrf(req, res);
   senden(res, views.registrieren(req));
 });
@@ -89,6 +96,7 @@ app.post('/registrieren', (req, res) => {
   const pw = String(req.body.passwort || '');
   const fehler = (t) => senden(res, views.registrieren(req, t, email), 400);
   if (!gastCsrfOk(req)) return fehler('Bitte lade die Seite neu und versuche es noch einmal.');
+  if (registrierungZu()) return res.redirect('/anmelden');
   if (auth.zuVieleVersuche(req.ip)) return fehler('Zu viele Versuche. Bitte warte 15 Minuten.');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) return fehler('Bitte gib eine gültige E-Mail-Adresse ein.');
   if (pw.length < 8 || pw.length > 200) return fehler('Das Passwort muss mindestens 8 Zeichen haben.');

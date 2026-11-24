@@ -1,0 +1,6 @@
+storypilot.de {
+	request_body {
+		max_size 310MB
+	}
+	reverse_proxy app:3000
+}

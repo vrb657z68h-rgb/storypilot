@@ -1,0 +1,19 @@
+{
+  "name": "storypilot",
+  "version": "0.1.0",
+  "description": "Storypilot: Instagram-Reels und Bilder planen und automatisch posten",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/server.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "express": "^4.22.3",
+    "multer": "^2.5.0"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=22.13"
+  }
+}

@@ -245,10 +245,12 @@ ${u.stripe_customer ? `<form method="post" action="/app/abo/verwalten">${csrf(re
   return seite(req, 'Abo', `<div class="karte"><h1>Dein Abo</h1>${req.query.ok ? '<div class="hinweis">Danke! Dein Abo wird gerade aktiviert.</div>' : ''}${inhalt}</div>`, { schmal: true });
 }
 
-function profil(req, link = '') {
+function profil(req, link = '', qr = '') {
   return seite(req, 'Profil', `
 <div class="karte"><h1>Profil</h1>
-${link ? `<p>Dein persönlicher Zugangslink. Damit meldest du dich auf jedem Gerät an. Gib ihn niemandem weiter.</p>
+${link ? `<h2>Aufs Handy holen</h2><p>Scanne diesen Code mit der Kamera deines iPhones und tippe auf den Link. Dann bist du dort angemeldet.</p>
+<div class="qr">${qr}</div>
+<p class="klein">Das ist dein persönlicher Zugangslink. Damit meldest du dich auf jedem Gerät an. Gib ihn niemandem weiter.</p>
 <label>Zugangslink<input readonly class="kopieren" value="${e(link)}"></label>` : `<p>Angemeldet als <b>${e(req.user.email)}</b></p>`}
 <form method="post" action="/abmelden">${csrf(req)}<button class="knopf hell">Abmelden</button></form>
 <h2 class="abstand">Konto löschen</h2>

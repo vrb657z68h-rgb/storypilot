@@ -111,3 +111,5 @@ label.haken input { width: auto; margin-top: .3rem; }
 input.kopieren { font-family: ui-monospace, monospace; font-size: .85rem; background: var(--grund); cursor: copy; }
 input.kopiert { outline: 2px solid var(--gruen); }
 .text-seite ol li { margin-bottom: .8rem; }
+.qr { background: #fff; display: flex; justify-content: center; margin: 1rem 0; }
+.qr svg { width: 220px; height: 220px; }

@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const express = require('express');
+const QRCode = require('qrcode');
 const multer = require('multer');
 
 const config = require('./config');
@@ -416,7 +417,11 @@ app.post('/app/abo/verwalten', csrfPflicht, async (req, res) => {
 });
 
 // ---------- Profil ----------
-app.get('/app/konto', (req, res) => senden(res, views.profil(req, config.nurIch ? zugangsLink() : '')));
+app.get('/app/konto', async (req, res) => {
+  const link = config.nurIch ? zugangsLink() : '';
+  const qr = link ? await QRCode.toString(link, { type: 'svg', margin: 1, width: 220 }) : '';
+  senden(res, views.profil(req, link, qr));
+});
 
 app.post('/app/konto/loeschen', csrfPflicht, (req, res) => {
   for (const b of db.prepare('SELECT file FROM posts WHERE user_id = ?').all(req.user.id)) dateiLoeschen(b.file);

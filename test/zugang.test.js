@@ -31,4 +31,5 @@ test('Anmeldung per Zugangslink', async () => {
   assert.strictEqual(r.status, 200);
   r = await c.holen('/app/konto');
   assert.match(r.text, new RegExp(`/zugang/${token}`));
+  assert.match(r.text, /<svg/);
 });

@@ -6,6 +6,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
+process.env.MODUS = '';
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'storypilot-gratis-'));
 process.env.INSTAGRAM_APP_ID = '';
 process.env.STRIPE_SECRET_KEY = 'sk_test_dummy';

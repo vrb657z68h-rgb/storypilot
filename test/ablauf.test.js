@@ -7,6 +7,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'storypilot-test-'));
+process.env.MODUS = '';
 process.env.DATA_DIR = ordner;
 process.env.INSTAGRAM_APP_ID = '';
 process.env.STRIPE_SECRET_KEY = '';

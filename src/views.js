@@ -221,7 +221,7 @@ function konten(req, liste, einrichten = false) {
        <p class="klein">Im Demo-Modus wird das Posten nur simuliert. Für echtes Posten müssen INSTAGRAM_APP_ID und INSTAGRAM_APP_SECRET eingetragen sein.</p>`
     : `<a class="knopf" href="/instagram/verbinden">Instagram-Konto verbinden</a>`;
   const schluessel = `<details class="abstand"><summary><b>Konto mit Zugangsschlüssel hinzufügen</b> (ohne Weiterleitung)</summary>
-<p class="klein">In deiner Meta-App unter Instagram → „API-Einrichtung mit Instagram-Login“ → „Zugriffsschlüssel generieren“ beim gewünschten Konto auf „Generieren“ klicken und den Schlüssel hier einfügen.</p>
+<p class="klein">Den Schlüssel bekommst du in deiner Meta-App (beginnt mit IG oder EAA). Ein EAA-Schlüssel aus dem Facebook-Login kann mehrere Instagram-Konten auf einmal verbinden.</p>
 <form method="post" action="/app/konten/schluessel">${csrf(req)}
 <label>Zugangsschlüssel<textarea name="schluessel" rows="3" required autocomplete="off"></textarea></label>
 <button class="knopf hell">Konto hinzufügen</button></form></details>`;

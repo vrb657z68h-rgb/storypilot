@@ -1,10 +1,17 @@
 'use strict';
-// Anbindung an die "Instagram API mit Instagram-Login" von Meta.
-// Funktioniert mit Instagram-Business- und Creator-Konten (keine Facebook-Seite nötig).
+// Anbindung an die Instagram-Schnittstelle von Meta, entweder über den Instagram-Login
+// (IG-Schlüssel, keine Facebook-Seite nötig) oder über Facebook Login for Business / Unified Login
+// (EAA-Schlüssel, Instagram-Konto muss mit einer Facebook-Seite verknüpft sein).
 const crypto = require('node:crypto');
 const config = require('./config');
 
 const GRAPH = () => `https://graph.instagram.com/${config.graphVersion}`;
+const FB_GRAPH = () => `https://graph.facebook.com/${config.graphVersion}`;
+// Schlüssel aus Facebook Login for Business ("Unified Login") beginnen mit EAA,
+// Schlüssel aus dem Instagram-Login mit IG. Die Veröffentlichungs-Schnittstelle ist bei beiden gleich.
+const istFacebook = (token) => /^EAA/.test(String(token || ''));
+const graphFuer = (token) => (istFacebook(token) ? FB_GRAPH() : GRAPH());
+const NIE = () => Date.now() + 10 * 365 * 86400000; // Seiten-Schlüssel laufen nicht ab
 const SCOPES = ['instagram_business_basic', 'instagram_business_content_publish'];
 const redirectUri = () => `${config.baseUrl}/instagram/callback`;
 
@@ -81,16 +88,72 @@ async function codeEinloesen(code) {
   };
 }
 
-// Konto über einen Zugangsschlüssel aus dem Meta-Dashboard hinzufügen (ohne Weiterleitung)
+// Konten über einen Zugangsschlüssel aus dem Meta-Dashboard hinzufügen (ohne Weiterleitung).
+// Gibt eine Liste zurück: Ein Facebook-Schlüssel kann mehrere Instagram-Konten auf einmal freischalten.
 async function schluesselPruefen(token) {
+  if (istFacebook(token)) return facebookSchluesselPruefen(token);
   const ich = await anfrage(`${GRAPH()}/me?` + new URLSearchParams({ fields: 'user_id,username', access_token: token }));
   let neu = { token, ablauf: Date.now() + 50 * 86400000 };
   try { neu = await zugangVerlaengern(token); } catch { /* frischer Schlüssel lässt sich erst nach 24 h verlängern */ }
-  return { igUserId: String(ich.user_id || ich.id), username: ich.username, token: neu.token, ablauf: neu.ablauf };
+  return [{ igUserId: String(ich.user_id || ich.id), username: ich.username, token: neu.token, ablauf: neu.ablauf }];
+}
+
+async function facebookSchluesselPruefen(token) {
+  // Kurzlebigen Nutzer-Schlüssel (1-2 h) gegen einen langlebigen tauschen, wenn App-ID und Geheimcode bekannt sind.
+  // Seiten-Schlüssel, die aus einem langlebigen Nutzer-Schlüssel kommen, laufen nicht ab.
+  let nutzerToken = token;
+  if (config.igAppId && config.igAppSecret) {
+    try {
+      const lang = await anfrage(`${FB_GRAPH()}/oauth/access_token?` + new URLSearchParams({
+        grant_type: 'fb_exchange_token', client_id: config.igAppId, client_secret: config.igAppSecret, fb_exchange_token: token,
+      }));
+      if (lang.access_token) nutzerToken = lang.access_token;
+    } catch { /* z. B. schon ein Seiten-Schlüssel */ }
+  }
+  const felder = 'instagram_business_account{id,username}';
+  const zuKonto = (id, username, t) => ({ igUserId: String(id), username, token: t, ablauf: NIE() });
+  let konten = [];
+  const versuche = [
+    // 1. Nutzer-Schlüssel: Facebook-Seiten mit verknüpftem Instagram-Konto
+    async () => {
+      const d = await anfrage(`${FB_GRAPH()}/me/accounts?` + new URLSearchParams({
+        fields: `name,access_token,${felder}`, limit: '100', access_token: nutzerToken,
+      }));
+      return (d.data || []).filter((s) => s.instagram_business_account)
+        .map((s) => zuKonto(s.instagram_business_account.id, s.instagram_business_account.username || s.name, s.access_token || nutzerToken));
+    },
+    // 2. Schlüssel gehört direkt zu einem Instagram-Konto (Unified Login / Systemnutzer mit Instagram-Asset)
+    async () => {
+      const ich = await anfrage(`${FB_GRAPH()}/me?` + new URLSearchParams({ fields: 'id,username', access_token: token }));
+      return ich.username ? [zuKonto(ich.id, ich.username, token)] : [];
+    },
+    // 3. Seiten-Schlüssel: /me ist die Seite
+    async () => {
+      const seite = await anfrage(`${FB_GRAPH()}/me?` + new URLSearchParams({ fields: `name,${felder}`, access_token: token }));
+      const ig = seite.instagram_business_account;
+      return ig ? [zuKonto(ig.id, ig.username || seite.name, token)] : [];
+    },
+    // 4. Systemnutzer: zugewiesene Instagram-Konten
+    async () => {
+      const d = await anfrage(`${FB_GRAPH()}/me/instagram_accounts?` + new URLSearchParams({ fields: 'id,username', access_token: token }));
+      return (d.data || []).filter((k) => k.username).map((k) => zuKonto(k.id, k.username, token));
+    },
+  ];
+  let letzterFehler = null;
+  for (const v of versuche) {
+    try { konten = await v(); } catch (e) { letzterFehler = e; }
+    if (konten.length) break;
+  }
+  if (!konten.length && letzterFehler && letzterFehler.message.includes('(Code 190)')) throw letzterFehler;
+  if (!konten.length) {
+    throw new InstagramFehler('Mit diesem Schlüssel ist kein Instagram-Konto erreichbar. Das Instagram-Konto muss ein Business- oder Creator-Konto sein, mit einer Facebook-Seite verknüpft, und beim Erstellen des Schlüssels freigegeben werden.', true);
+  }
+  return konten;
 }
 
 // 60-Tage-Zugang verlängern (geht, solange er noch gültig und mind. 24 h alt ist)
 async function zugangVerlaengern(token) {
+  if (istFacebook(token)) return { token, ablauf: NIE() };
   const d = await anfrage('https://graph.instagram.com/refresh_access_token?' + new URLSearchParams({
     grant_type: 'ig_refresh_token',
     access_token: token,
@@ -102,6 +165,7 @@ const warte = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Beitrag veröffentlichen. mediaUrl muss öffentlich erreichbar sein.
 async function veroeffentlichen(konto, beitrag, mediaUrl) {
+  const G = graphFuer(konto.token);
   const felder = { access_token: konto.token };
   const video = beitrag.media_type === 'REELS';
   if (beitrag.als_story) {
@@ -117,12 +181,12 @@ async function veroeffentlichen(konto, beitrag, mediaUrl) {
     felder.caption = beitrag.caption || '';
     felder.image_url = mediaUrl;
   }
-  const behaelter = await anfrage(`${GRAPH()}/${konto.ig_user_id}/media`, formular(felder));
+  const behaelter = await anfrage(`${G}/${konto.ig_user_id}/media`, formular(felder));
 
   // Warten, bis Instagram das Medium verarbeitet hat (max. 10 Minuten)
   let status = '';
   for (let i = 0; i < 60; i++) {
-    const s = await anfrage(`${GRAPH()}/${behaelter.id}?` + new URLSearchParams({
+    const s = await anfrage(`${G}/${behaelter.id}?` + new URLSearchParams({
       fields: 'status_code,status', access_token: konto.token,
     }));
     status = s.status_code;
@@ -134,12 +198,12 @@ async function veroeffentlichen(konto, beitrag, mediaUrl) {
   }
   if (status !== 'FINISHED') throw new InstagramFehler(`Instagram ist nach 10 Minuten nicht fertig (Status: ${status}).`);
 
-  const post = await anfrage(`${GRAPH()}/${konto.ig_user_id}/media_publish`, formular({
+  const post = await anfrage(`${G}/${konto.ig_user_id}/media_publish`, formular({
     creation_id: behaelter.id, access_token: konto.token,
   }));
   let permalink = '';
   try {
-    permalink = (await anfrage(`${GRAPH()}/${post.id}?` + new URLSearchParams({
+    permalink = (await anfrage(`${G}/${post.id}?` + new URLSearchParams({
       fields: 'permalink', access_token: konto.token,
     }))).permalink || '';
   } catch { /* Link ist nur Komfort */ }

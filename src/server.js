@@ -322,6 +322,24 @@ app.post('/app/beitrag/:id/loeschen', csrfPflicht, (req, res) => {
 // ---------- Instagram-Konten ----------
 app.get('/app/konten', (req, res) => senden(res, views.konten(req, kontenVon(req.user.id), darfEinrichten(req))));
 
+app.post('/app/konten/schluessel', csrfPflicht, async (req, res) => {
+  const token = String(req.body.schluessel || '').trim().replace(/\s+/g, '');
+  if (!/^[A-Za-z0-9_\-|.]{40,600}$/.test(token)) return zurueck(res, '/app/konten', 'Das sieht nicht nach einem Zugangsschlüssel aus. Er ist sehr lang und beginnt meist mit IG.');
+  const limit = plan.kontoPruefen(req.user);
+  if (limit) return zurueck(res, '/app/konten', limit);
+  try {
+    const k = await instagram.schluesselPruefen(token);
+    db.prepare(`INSERT INTO accounts (user_id, ig_user_id, username, token, token_expires, created_at) VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT (user_id, ig_user_id) DO UPDATE SET username = excluded.username, token = excluded.token,
+                token_expires = excluded.token_expires, created_at = excluded.created_at`)
+      .run(req.user.id, k.igUserId, k.username, k.token, k.ablauf, Date.now());
+    for (const d of db.prepare('SELECT id FROM accounts WHERE user_id = ? AND demo = 1').all(req.user.id)) kontoEntfernen(d.id);
+    zurueck(res, '/app/konten', `@${k.username} ist verbunden.`);
+  } catch (e) {
+    zurueck(res, '/app/konten', `Instagram hat den Schlüssel abgelehnt: ${e.message}`);
+  }
+});
+
 app.post('/app/konten/demo', csrfPflicht, (req, res) => {
   if (!config.demoInstagram) return res.redirect('/app/konten');
   const limit = plan.kontoPruefen(req.user);

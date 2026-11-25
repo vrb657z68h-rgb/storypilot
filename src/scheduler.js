@@ -107,7 +107,7 @@ function starten() {
   setInterval(async () => {
     auth.aufraeumen();
     alteDateienLoeschen();
-    if (!config.demoInstagram) await zugaengeVerlaengern();
+    await zugaengeVerlaengern();
   }, 60 * 60000).unref();
   setTimeout(takt, 2000).unref();
 }

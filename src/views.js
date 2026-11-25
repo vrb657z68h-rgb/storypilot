@@ -21,7 +21,8 @@ function seite(req, titel, inhalt, { schmal = false } = {}) {
        <a href="/app/konten">Konten</a><a href="/app/abo">Abo</a><a href="/app/konto">Profil</a>`
     : config.nurIch ? '' : `<a href="/#preis">Preis</a><a href="/anmelden">Anmelden</a><a href="/registrieren" class="knopf klein">Kostenlos starten</a>`;
   const hinweis = req.query && req.query.hinweis ? `<div class="hinweis">${e(req.query.hinweis)}</div>` : '';
-  const demo = config.demoInstagram && u
+  const echtesKonto = u && require('./db').prepare('SELECT 1 FROM accounts WHERE user_id = ? AND demo = 0 LIMIT 1').get(u.id);
+  const demo = config.demoInstagram && u && !echtesKonto
     ? '<div class="demo-leiste">Demo-Modus: Es wird nichts wirklich auf Instagram gepostet.</div>' : '';
   return `<!DOCTYPE html>
 <html lang="de"><head>
@@ -219,10 +220,16 @@ function konten(req, liste, einrichten = false) {
     ? `<form method="post" action="/app/konten/demo">${csrf(req)}<button class="knopf">Demo-Konto verbinden</button></form>
        <p class="klein">Im Demo-Modus wird das Posten nur simuliert. Für echtes Posten müssen INSTAGRAM_APP_ID und INSTAGRAM_APP_SECRET eingetragen sein.</p>`
     : `<a class="knopf" href="/instagram/verbinden">Instagram-Konto verbinden</a>`;
+  const schluessel = `<details class="abstand"><summary><b>Konto mit Zugangsschlüssel hinzufügen</b> (ohne Weiterleitung)</summary>
+<p class="klein">In deiner Meta-App unter Instagram → „API-Einrichtung mit Instagram-Login“ → „Zugriffsschlüssel generieren“ beim gewünschten Konto auf „Generieren“ klicken und den Schlüssel hier einfügen.</p>
+<form method="post" action="/app/konten/schluessel">${csrf(req)}
+<label>Zugangsschlüssel<textarea name="schluessel" rows="3" required autocomplete="off"></textarea></label>
+<button class="knopf hell">Konto hinzufügen</button></form></details>`;
   return seite(req, 'Konten', `
 <div class="karte"><h1>Instagram-Konten</h1>
 ${zeilen || '<p class="leer">Noch kein Konto verbunden.</p>'}
 <div class="abstand">${verbinden}</div>
+${config.nurIch ? schluessel : ''}
 <p class="klein">Wichtig: Es funktionieren nur Instagram-<b>Business</b>- oder <b>Creator</b>-Konten. Umstellen kannst du das kostenlos in der Instagram-App unter Einstellungen → Kontotyp und Tools.</p>
 </div>`, { schmal: true });
 }

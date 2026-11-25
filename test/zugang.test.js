@@ -43,3 +43,11 @@ test('QR-Seite nur direkt am Rechner', async () => {
   assert.strictEqual(r.status, 200);
   assert.match(r.text, /<svg/);
 });
+
+test('ungültiger Zugangsschlüssel wird abgelehnt', async () => {
+  const { csrfAus } = require('./hilfe');
+  let r = await c.holen('/app/konten');
+  assert.match(r.text, /Zugangsschlüssel/);
+  r = await c.holen('/app/konten/schluessel', { method: 'POST', body: new URLSearchParams({ _csrf: csrfAus(r.text), schluessel: 'kurz' }) });
+  assert.match(decodeURIComponent(r.ort), /nicht nach einem Zugangsschlüssel/);
+});

@@ -81,6 +81,14 @@ async function codeEinloesen(code) {
   };
 }
 
+// Konto über einen Zugangsschlüssel aus dem Meta-Dashboard hinzufügen (ohne Weiterleitung)
+async function schluesselPruefen(token) {
+  const ich = await anfrage(`${GRAPH()}/me?` + new URLSearchParams({ fields: 'user_id,username', access_token: token }));
+  let neu = { token, ablauf: Date.now() + 50 * 86400000 };
+  try { neu = await zugangVerlaengern(token); } catch { /* frischer Schlüssel lässt sich erst nach 24 h verlängern */ }
+  return { igUserId: String(ich.user_id || ich.id), username: ich.username, token: neu.token, ablauf: neu.ablauf };
+}
+
 // 60-Tage-Zugang verlängern (geht, solange er noch gültig und mind. 24 h alt ist)
 async function zugangVerlaengern(token) {
   const d = await anfrage('https://graph.instagram.com/refresh_access_token?' + new URLSearchParams({
@@ -153,5 +161,5 @@ function signedRequestLesen(signed) {
 }
 
 module.exports = {
-  loginUrl, codeEinloesen, zugangVerlaengern, veroeffentlichen, signedRequestLesen, InstagramFehler,
+  loginUrl, codeEinloesen, schluesselPruefen, zugangVerlaengern, veroeffentlichen, signedRequestLesen, InstagramFehler,
 };

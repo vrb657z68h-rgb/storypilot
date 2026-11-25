@@ -245,10 +245,11 @@ ${u.stripe_customer ? `<form method="post" action="/app/abo/verwalten">${csrf(re
   return seite(req, 'Abo', `<div class="karte"><h1>Dein Abo</h1>${req.query.ok ? '<div class="hinweis">Danke! Dein Abo wird gerade aktiviert.</div>' : ''}${inhalt}</div>`, { schmal: true });
 }
 
-function profil(req) {
+function profil(req, link = '') {
   return seite(req, 'Profil', `
 <div class="karte"><h1>Profil</h1>
-<p>Angemeldet als <b>${e(req.user.email)}</b></p>
+${link ? `<p>Dein persönlicher Zugangslink. Damit meldest du dich auf jedem Gerät an. Gib ihn niemandem weiter.</p>
+<label>Zugangslink<input readonly class="kopieren" value="${e(link)}"></label>` : `<p>Angemeldet als <b>${e(req.user.email)}</b></p>`}
 <form method="post" action="/abmelden">${csrf(req)}<button class="knopf hell">Abmelden</button></form>
 <h2 class="abstand">Konto löschen</h2>
 <p class="klein">Löscht dein Konto, alle verbundenen Instagram-Zugänge, geplanten Beiträge und hochgeladenen Dateien. Ein laufendes Abo kündige bitte vorher unter „Abo“.</p>

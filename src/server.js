@@ -58,6 +58,31 @@ function csrfPflicht(req, res, next) {
 }
 
 // ---------- Öffentliche Seiten ----------
+// ---------- Privater Modus: Zugang per persönlichem Link statt Passwort ----------
+function zugangsToken() {
+  const datei = path.join(config.dataDir, 'zugang');
+  if (!fs.existsSync(datei)) fs.writeFileSync(datei, crypto.randomBytes(24).toString('hex'), { mode: 0o600 });
+  return fs.readFileSync(datei, 'utf8').trim();
+}
+const zugangsLink = () => `${config.baseUrl}/zugang/${zugangsToken()}`;
+
+if (config.nurIch && !config.ersterCode && !db.prepare('SELECT 1 FROM users LIMIT 1').get()) {
+  const jetzt = Date.now();
+  db.prepare('INSERT INTO users (email, pw_hash, created_at, trial_ends) VALUES (?, ?, ?, ?)')
+    .run('ich@storypilot.local', auth.hashPasswort(crypto.randomBytes(24).toString('hex')), jetzt, jetzt);
+}
+
+app.get('/zugang/:token', (req, res) => {
+  const soll = Buffer.from(config.nurIch ? zugangsToken() : '');
+  const ist = Buffer.from(String(req.params.token));
+  if (!soll.length || ist.length !== soll.length || !crypto.timingSafeEqual(ist, soll)) {
+    return senden(res, views.fehlerSeite(req, 'Link ungültig', 'Dieser Zugangslink stimmt nicht.'), 404);
+  }
+  const besitzer = db.prepare('SELECT id FROM users ORDER BY id LIMIT 1').get();
+  auth.sessionStarten(res, besitzer.id);
+  res.redirect('/app');
+});
+
 const registrierungZu = () => config.nurIch && Boolean(db.prepare('SELECT 1 FROM users LIMIT 1').get());
 
 app.get('/', (req, res) => {
@@ -391,7 +416,7 @@ app.post('/app/abo/verwalten', csrfPflicht, async (req, res) => {
 });
 
 // ---------- Profil ----------
-app.get('/app/konto', (req, res) => senden(res, views.profil(req)));
+app.get('/app/konto', (req, res) => senden(res, views.profil(req, config.nurIch ? zugangsLink() : '')));
 
 app.post('/app/konto/loeschen', csrfPflicht, (req, res) => {
   for (const b of db.prepare('SELECT file FROM posts WHERE user_id = ?').all(req.user.id)) dateiLoeschen(b.file);
@@ -409,6 +434,10 @@ app.use((err, req, res, next) => {
 if (require.main === module) {
   app.listen(config.port, () => {
     console.log(`${config.appName} läuft auf ${config.baseUrl}`);
+    if (config.nurIch) {
+      fs.writeFileSync(path.join(config.dataDir, 'zugangslink.txt'), zugangsLink() + '\n');
+      console.log(`Dein Zugangslink: ${zugangsLink()}`);
+    }
     if (config.demoInstagram) console.log('Demo-Modus: Instagram-Zugangsdaten fehlen, Posten wird nur simuliert.');
     if (!config.billingEnabled) console.log('Bezahlung aus: Stripe-Schlüssel fehlt, alles ist freigeschaltet.');
   });

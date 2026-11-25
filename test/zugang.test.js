@@ -33,3 +33,13 @@ test('Anmeldung per Zugangslink', async () => {
   assert.match(r.text, new RegExp(`/zugang/${token}`));
   assert.match(r.text, /<svg/);
 });
+
+test('QR-Seite nur direkt am Rechner', async () => {
+  // über "Tunnel" (mit Weiterleitungs-Kopfzeile) gesperrt
+  let r = await c.holen('/qr', { headers: { 'x-forwarded-for': '1.2.3.4' } });
+  assert.strictEqual(r.status, 404);
+  // Host ist nicht localhost (Test-Client nutzt 127.0.0.1) -> erlaubt
+  r = await c.holen('/qr');
+  assert.strictEqual(r.status, 200);
+  assert.match(r.text, /<svg/);
+});

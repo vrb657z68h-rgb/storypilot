@@ -84,6 +84,26 @@ app.get('/zugang/:token', (req, res) => {
   res.redirect('/app');
 });
 
+// QR-Code zum Anmelden: nur direkt am Rechner selbst (localhost), nie über Tunnel oder Internet
+function direktAmRechner(req) {
+  const adr = String(req.socket.remoteAddress || '');
+  const lokal = adr === '127.0.0.1' || adr === '::1' || adr === '::ffff:127.0.0.1';
+  const weitergeleitet = req.headers['x-forwarded-for'] || req.headers['cf-connecting-ip'] || req.headers['x-forwarded-host'];
+  const host = String(req.headers.host || '').split(':')[0];
+  return lokal && !weitergeleitet && (host === 'localhost' || host === '127.0.0.1');
+}
+
+app.get('/qr', async (req, res) => {
+  if (!config.nurIch || !direktAmRechner(req)) return senden(res, views.fehlerSeite(req, 'Seite nicht gefunden', 'Diese Seite gibt es nicht.'), 404);
+  const link = zugangsLink();
+  const qr = await QRCode.toString(link, { type: 'svg', margin: 1, width: 260 });
+  senden(res, views.text(req, 'Aufs Handy holen', `<h1>Storypilot aufs iPhone holen</h1>
+<p>Öffne auf dem iPhone die <b>Kamera</b>, halte sie auf diesen Code und tippe auf den Link, der erscheint.</p>
+<div class="qr">${qr}</div>
+<p>Danach in Safari auf <b>Teilen → Zum Home-Bildschirm</b>, dann hast du Storypilot als Symbol.</p>
+<p class="klein">Diese Seite funktioniert nur direkt an diesem Rechner.</p>`));
+});
+
 const registrierungZu = () => config.nurIch && Boolean(db.prepare('SELECT 1 FROM users LIMIT 1').get());
 
 app.get('/', (req, res) => {

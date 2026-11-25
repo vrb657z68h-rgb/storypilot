@@ -5,5 +5,5 @@ package_update: true
 packages: [git, curl, openssl]
 runcmd:
   - curl -fsSL https://get.docker.com | sh
-  - git clone https://github.com/vrb657z68h-rgb/Storypilot.git /opt/storypilot
+  - git clone https://github.com/vrb657z68h-rgb/storypilot.git /opt/storypilot
   - ERSTER_CODE=HIER-DEIN-CODE bash /opt/storypilot/deploy/einrichten.sh

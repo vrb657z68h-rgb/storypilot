@@ -33,7 +33,18 @@ Dann öffnest du http://localhost:3000. Ohne Meta-Zugangsdaten läuft die App im
 
 Die Tests startest du mit `npm test`.
 
-## In Betrieb nehmen
+## Nur für dich selbst (privater Modus)
+
+Im privaten Modus (`MODUS=nur-ich`) kann sich nur ein Konto anmelden, es gibt keine Startseite und keine Bezahlung. Eine Prüfung durch Meta ist nicht nötig, weil die Meta-App im Entwicklungsmodus auf Konten posten darf, die als Tester eingetragen sind.
+
+1. Bei Hetzner Cloud einen Server anlegen: Ubuntu 24.04, Typ CX22 (etwa 5 € im Monat).
+2. Ins Feld **Cloud config** den Inhalt von `deploy/cloud-init.yaml` einfügen und `HIER-DEIN-CODE` durch einen eigenen Code ersetzen.
+3. Nach etwa 5 Minuten `https://<IP-mit-Bindestrichen>.sslip.io` öffnen, also zum Beispiel `https://49-12-34-56.sslip.io` für die IP 49.12.34.56. Dort mit dem Code dein Konto anlegen.
+4. Unter **Konten → Instagram einrichten** den Schritten folgen und die Instagram-App-ID und den Geheimcode eintragen.
+
+Updates spielst du auf dem Server mit `bash /opt/storypilot/deploy/aktualisieren.sh` ein.
+
+## Zum Verkaufen in Betrieb nehmen
 
 ### 1. Server
 
